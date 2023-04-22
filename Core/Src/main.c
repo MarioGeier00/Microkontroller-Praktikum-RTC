@@ -113,6 +113,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	//Abfrage des Statuses
 	status = HAL_I2C_Master_Transmit(&hi2c1, 0x27<<1, &value, 1, 1000);
     if (status == HAL_OK) {
 	  sprintf(result, "erfolgreich \r\n");
