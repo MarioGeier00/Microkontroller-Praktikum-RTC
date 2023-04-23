@@ -106,13 +106,19 @@ int main(void)
   char datum[100];
   sprintf(datum,"Hello World!");
   lcd_send_string(datum);
+
+  uint8_t RX_Data[10];
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
+	HAL_UART_Receive(&huart3, RX_Data, 4, 1000); //TODO: Interrupt
+    HAL_UART_Transmit(&huart3, /*(uint8_t*)&datum*/ RX_Data, 4, 1000);
+
+    HAL_Delay(2000);
+	  /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
