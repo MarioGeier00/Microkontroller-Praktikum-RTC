@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,6 +62,7 @@ void lcd_send_cmd (char cmd);
 void lcd_send_data (char data);
 void lcd_init (void);
 void lcd_send_string (char *str);
+void convert_int_to_str(uint8_t zahl);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -103,22 +105,154 @@ int main(void)
   lcd_init();
   HAL_Delay(1000);
 
-  char datum[100];
-  sprintf(datum,"Hello World!");
-  lcd_send_string(datum);
+  //Am Anfang initialisieren!
+  char data = '\0';
+  char datetime[16] = {'\0'};
+  uint8_t i = 0;
 
-  uint8_t RX_Data[10];
+  //Terminal Handling Variables
+  char space[] = "\rTT:MM - HH:MM:SS\r";
+  char IllegalFormat[] = "\rFalsche Eingabe!";
+  uint8_t error = 0; //False
+
+  //Terminal Initialisieren
+  HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HAL_UART_Receive(&huart3, RX_Data, 4, 1000); //TODO: Interrupt
-    HAL_UART_Transmit(&huart3, /*(uint8_t*)&datum*/ RX_Data, 4, 1000);
+	  //Eingabe auffangen
+	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 1000);
+	  HAL_UART_Transmit(&huart3, (uint8_t*)&data, 1, 1000);
 
-    HAL_Delay(2000);
-	  /* USER CODE END WHILE */
+	  //Eingabe wurde getätigt
+	  if(data != '\0')
+	  {
+		  datetime[i] = data;
+		  //Format überprüfen
+		  if(((i == 2 || i == 10 || i == 13) && data != ':' ) //Doppelpunkt
+				  || ((i == 5 || i == 7) && data != ' ') //Leerzeichen
+				  || (i == 6 && data != '-')) // Bindestrich
+		  {
+			  error = 1;
+		  }
+		  else
+		  {
+			  //Überprüfung der Eingabe auf richtige Zahlen
+			  switch(i)
+			  {
+			  	  //Tage
+			  	  case 0: //Erste Stelle maximal 3
+					  if(datetime[i] < '0' || datetime[i] >'3')
+					  {
+						  error = 1;
+					  }
+					  break;
+
+			  	  case 1:
+					  if((datetime[i] < '0' || datetime[i] > '9')
+							  || (datetime[i-1] == '3' && datetime[i] > '1')) // >31
+					  {
+						  error = 1;
+					  }
+					  break;
+
+				  //Monate
+			  	  case 3: //Erste Stelle maximal 1
+					  if(datetime[i] < '0' || datetime[i] > '1')
+					  {
+						  error = 1;
+					  }
+					  break;
+
+			  	  case 4:
+					  if((datetime[i] < '0' || datetime[i] > '9')
+							  || (datetime[i-1] == '1' && datetime[i] > '2')) // > 12
+					  {
+						  error = 1;
+					  }
+					  break;
+
+			      //Stunden
+			  	  case 8: //Erste Stelle maximal 2
+				  if(datetime[i] < '0' || datetime[i] > '2')
+				  {
+					  error = 1;
+				  }
+				  break;
+
+			  	  case 9:
+				  if((datetime[i] < '0' || datetime[i] > '9')
+						  || (datetime[i-1] == '2' && datetime[i] > '3')) // > 23
+				  {
+					  error = 1;
+				  }
+				  break;
+
+				  //Handling Minuten & Sekunden
+			  case 11:
+			  case 14: //Erste Stelle maximal 5
+				  if(datetime[i] < '0' || datetime[i] > '5')
+				  {
+					  error = 1;
+				  }
+				  break;
+
+			  case 12:
+			  case 15:
+				  if((datetime[i] < '0' || datetime[i] > '9')
+						  || (datetime[i-1] == '6' && datetime[i] >= '0')) // > 59
+					  error = 1;
+				  break;
+
+			  default: // default ist 2, 5, 6, 7, 10, 13 (Zeichen)
+				  break;
+			  }
+		  }
+
+
+
+
+
+
+
+		  //i wird hier ständig um 1 erhöht, wenn eine Eingabe kommt
+		  i++;
+
+		  //Reset & Error-Handling
+		  if(i > 15 || error > 0)
+		  {
+
+			  //Error Message:
+			  if(error > 0)
+			  {
+				  HAL_UART_Transmit(&huart3, (uint8_t*)&IllegalFormat, strlen(IllegalFormat), 1000);
+				  HAL_Delay(2000);
+			  }
+
+			  //Reset Variable
+			  i = 0;
+			  //Reset Terminal
+			  HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
+			  if(error < 1)
+			  {
+				  //Set Display - TODO:Hier müsste man dann die RTC setzen
+
+				  lcd_send_string(datetime);
+				  lcd_send_cmd(0x02);
+			  }
+			  else
+			  { //Error resetten
+				  error = 0;
+			  }
+		  }
+		  data = '\0';
+	  }
+
+    HAL_Delay(10);
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -384,6 +518,13 @@ void lcd_send_string (char *str){
 
 	while (*str) lcd_send_data (*str++);
 }
+/*
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    HAL_UART_Transmit(&huart3, RX_Data, 16, 100);
+    HAL_UART_Receive_IT(&huart3, RX_Data, 16);
+}
+*/
 /* USER CODE END 4 */
 
 /**
