@@ -202,9 +202,10 @@ int main(void)
 
 			  case 12:
 			  case 15:
-				  if((datetime[i] < '0' || datetime[i] > '9')
-						  || (datetime[i-1] == '6' && datetime[i] >= '0')) // > 59
+				  if(datetime[i] < '0' || datetime[i] > '9') // > 59
+				  {
 					  error = 1;
+				  }
 				  break;
 
 			  default: // default ist 2, 5, 6, 7, 10, 13 (Zeichen)
