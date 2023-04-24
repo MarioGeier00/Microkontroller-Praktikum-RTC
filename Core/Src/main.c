@@ -261,13 +261,14 @@ int main(void)
 				  //Set RTC
 				  sDate.Date = calculate_number(str_date[0], str_date[1]);
 				  sDate.Month = calculate_number(str_date[3], str_date[4]);
+				  //Setting Time. Bei Stunden zählt er einfach weiter?
 				  sTime.Hours = calculate_number(str_date[8], str_date[9]) + 1;
 				  sTime.Minutes = calculate_number(str_date[11], str_date[12]);
 				  sTime.Seconds = calculate_number(str_date[14], str_date[15]);
 
 
-				  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
-				  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
+				  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+				  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
 				  HAL_Delay(420);
 			  }
 			  else
@@ -286,7 +287,7 @@ int main(void)
     HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 
-    sprintf(datetime_LCD, "%02d:%02d - %02d:%02d:%02d", sDate.Date, sDate.Month, sTime.Hours, sTime.Minutes, sTime.Seconds);
+    sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", sDate.Date, sDate.Month, sTime.Hours, sTime.Minutes, sTime.Seconds);
     //Jedesmal ausprinten
     lcd_send_string(datetime_LCD);
 	lcd_send_cmd(0x02);
@@ -417,21 +418,21 @@ static void MX_RTC_Init(void)
 
   /** Initialize RTC and set the Time and Date
   */
-  sTime.Hours = 0x1;
-  sTime.Minutes = 0x1;
-  sTime.Seconds = 0x1;
-  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.Hours = 1;
+  sTime.Minutes = 1;
+  sTime.Seconds = 1;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_ADD1H;
   sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
   {
     Error_Handler();
   }
   sDate.WeekDay = RTC_WEEKDAY_MONDAY;
   sDate.Month = RTC_MONTH_JANUARY;
-  sDate.Date = 0x1;
-  sDate.Year = 0x1;
+  sDate.Date = 1;
+  sDate.Year = 1;
 
-  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
   {
     Error_Handler();
   }
