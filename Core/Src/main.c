@@ -258,10 +258,21 @@ int main(void)
 				  //Set RTC
 				  date_rtc.Date = calculate_number(str_date[0], str_date[1]);
 				  date_rtc.Month = calculate_number(str_date[3], str_date[4]);
+				  //Immer Schaltjahr:
+				  date_rtc.Year = 2000;
+
 				  time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
 				  time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
 				  time_rtc.Seconds = calculate_number(str_date[14], str_date[15]);
 
+				  if(date_rtc.Month == 2 && date_rtc.Date > 29)
+					  date_rtc.Date = 29;
+				  else if((date_rtc.Month == 4 || date_rtc.Month == 6
+						  || date_rtc.Month == 9 || date_rtc.Month == 11)
+						  && date_rtc.Date > 30)
+				  {
+					  date_rtc.Date = 30;
+				  }
 
 				  HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
 				  HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
@@ -416,7 +427,7 @@ static void MX_RTC_Init(void)
   sTime.Hours = 23;
   sTime.Minutes = 59;
   sTime.Seconds = 45;
-  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_ADD1H;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
   sTime.StoreOperation = RTC_STOREOPERATION_RESET;
   if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
   {
