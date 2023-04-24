@@ -70,6 +70,22 @@ uint8_t calculate_number(char zehner, char einer);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+//RTC
+RTC_TimeTypeDef time_rtc;
+RTC_DateTypeDef date_rtc;
+
+
+//Am Anfang initialisieren!
+char data = '\0';
+char str_date[16] = {'\0'};
+char datetime_LCD[22] = {'\0'};
+uint8_t i = 0;
+
+//Terminal Handling Variables
+char space[] = "\rTT:MM - HH:MM:SS\r";
+char IllegalFormat[] = "\rFalsche Eingabe!";
+uint8_t error = 0; //False
+
 
 /* USER CODE END 0 */
 
@@ -109,30 +125,11 @@ int main(void)
   lcd_init();
   HAL_Delay(1000);
 
-  //Am Anfang initialisieren!
-  char data = '\0';
-  char str_date[16] = {'\0'};
-  char datetime_LCD[22] = {'\0'};
-  uint8_t i = 0;
-
-  //Terminal Handling Variables
-  char space[] = "\rTT:MM - HH:MM:SS\r";
-  char IllegalFormat[] = "\rFalsche Eingabe!";
-  uint8_t error = 0; //False
-
   //Terminal Initialisieren
   HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
 
 
-  //RTC
-  RTC_TimeTypeDef sTime;
-  RTC_DateTypeDef sDate;
 
-  char tag[2];
-  char monat[2];
-  char stunde[2];
-  char minute[2];
-  char sekunde[2];
 
   /* USER CODE END 2 */
 
@@ -259,16 +256,15 @@ int main(void)
 			  if(error < 1)
 			  {
 				  //Set RTC
-				  sDate.Date = calculate_number(str_date[0], str_date[1]);
-				  sDate.Month = calculate_number(str_date[3], str_date[4]);
-				  //Setting Time. Bei Stunden zählt er einfach weiter?
-				  sTime.Hours = calculate_number(str_date[8], str_date[9]) + 1;
-				  sTime.Minutes = calculate_number(str_date[11], str_date[12]);
-				  sTime.Seconds = calculate_number(str_date[14], str_date[15]);
+				  date_rtc.Date = calculate_number(str_date[0], str_date[1]);
+				  date_rtc.Month = calculate_number(str_date[3], str_date[4]);
+				  time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
+				  time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
+				  time_rtc.Seconds = calculate_number(str_date[14], str_date[15]);
 
 
-				  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-				  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+				  HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+				  HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
 				  HAL_Delay(420);
 			  }
 			  else
@@ -284,10 +280,9 @@ int main(void)
     HAL_Delay(10);
 
 
-    HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-
-    sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", sDate.Date, sDate.Month, sTime.Hours, sTime.Minutes, sTime.Seconds);
+    HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
+    HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+    sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
     //Jedesmal ausprinten
     lcd_send_string(datetime_LCD);
 	lcd_send_cmd(0x02);
@@ -418,9 +413,9 @@ static void MX_RTC_Init(void)
 
   /** Initialize RTC and set the Time and Date
   */
-  sTime.Hours = 1;
-  sTime.Minutes = 1;
-  sTime.Seconds = 1;
+  sTime.Hours = 23;
+  sTime.Minutes = 59;
+  sTime.Seconds = 45;
   sTime.DayLightSaving = RTC_DAYLIGHTSAVING_ADD1H;
   sTime.StoreOperation = RTC_STOREOPERATION_RESET;
   if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
@@ -429,7 +424,7 @@ static void MX_RTC_Init(void)
   }
   sDate.WeekDay = RTC_WEEKDAY_MONDAY;
   sDate.Month = RTC_MONTH_JANUARY;
-  sDate.Date = 1;
+  sDate.Date = 31;
   sDate.Year = 1;
 
   if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
