@@ -10,13 +10,18 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 - Display the time every second in the format `TT:MM - HH:MM:SS`  
 - Using the UART, the time can be modified  
 
+
+## RTC
+Die Real-Time Clock kann über das Terminal gesetzt werden.
+Real-Time Clock ist immer ein Schaltjahr.
+Es wird geprüft, ob die Eingaben korrekt sind (Zahlen, Zeichen)
+Es wird geprüft ob die Tage richtig sind (31.02. gibt es nicht)
+
+
 ## Mögliche TODOs:
-- UART Interrupt, statt Polling
-- DMA
---> Meiner Meinung nach ist das nicht nötig.
+- UART Interrupt, statt Polling?
+- DMA ?? Kein Plan.
 
-- Überprüfen ob Monate mit Datum übereinstimmt (Januar hat 31 Tage, Februar 28 Tage oder 29 Tage, März hat 31 Tage, April 30 Tage usw.)
-
-Wenn man Zeit auf "28:02 - 23:59:57" dann springt es beim Tag wechsel auf "01:03 - 00:00:00" - so sollte es sein.
-Aber wenn man auf 30:02 - 23:59:57 stellt dann springt es dann auf 31:02 ... Also müsste man das überprüfen.
-Um es einfach zu machen, würde ich es so machen, dass es immer einen Schaltjahr gibt. (Das Jahr sozusagen immer auf 2000 setzen)
+Rand0x: Meiner Meinung nach ist das nicht nötig, da Projekt grundsätzlich fertig.
+Damit man weniger in der main stehen hat, müsste man das UART als Interrupt machen.
+Das könnte etwas umständlich werden.

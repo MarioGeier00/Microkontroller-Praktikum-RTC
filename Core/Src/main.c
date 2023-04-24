@@ -80,6 +80,7 @@ char data = '\0';
 char str_date[16] = {'\0'};
 char datetime_LCD[22] = {'\0'};
 uint8_t i = 0;
+uint8_t schaltjahr = 0; // = Schaltjahr
 
 //Terminal Handling Variables
 char space[] = "\rTT:MM - HH:MM:SS\r";
@@ -137,6 +138,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	  //Eingabe auffangen
 	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 100);
 
@@ -259,7 +261,7 @@ int main(void)
 				  date_rtc.Date = calculate_number(str_date[0], str_date[1]);
 				  date_rtc.Month = calculate_number(str_date[3], str_date[4]);
 				  //Immer Schaltjahr:
-				  date_rtc.Year = 2000;
+				  date_rtc.Year = schaltjahr;
 
 				  time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
 				  time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
@@ -276,7 +278,7 @@ int main(void)
 
 				  HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
 				  HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-				  HAL_Delay(420);
+				  HAL_Delay(200);
 			  }
 			  else
 			  { //Error resetten
@@ -287,16 +289,17 @@ int main(void)
 	  }
 
 
-
-    HAL_Delay(10);
-
-
+	//Set Display: RTC
     HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+    //Immer Schaltjahr
+    if(date_rtc.Year != schaltjahr)
+    	date_rtc.Year = schaltjahr;
+
     sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
-    //Jedesmal ausprinten
     lcd_send_string(datetime_LCD);
-	lcd_send_cmd(0x02);
+	lcd_send_cmd(0x02); //Reset Cursor
+	HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
