@@ -65,7 +65,7 @@ void lcd_send_cmd (char cmd);
 void lcd_send_data (char data);
 void lcd_init (void);
 void lcd_send_string (char *str);
-void convert_int_to_str(uint8_t zahl);
+uint8_t calculate_number(char zehner, char einer);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -111,8 +111,8 @@ int main(void)
 
   //Am Anfang initialisieren!
   char data = '\0';
-  char datetime[16] = {'\0'};
-  char datetime_LCD[16] = {' '};
+  char str_date[16] = {'\0'};
+  char datetime_LCD[22] = {'\0'};
   uint8_t i = 0;
 
   //Terminal Handling Variables
@@ -148,7 +148,8 @@ int main(void)
 	  {
 		  HAL_UART_Transmit(&huart3, (uint8_t*)&data, 1, 100);
 
-		  datetime[i] = data;
+		  str_date[i] = data;
+
 		  //Format überprüfen
 		  if(((i == 2 || i == 10 || i == 13) && data != ':' ) //Doppelpunkt
 				  || ((i == 5 || i == 7) && data != ' ') //Leerzeichen
@@ -163,15 +164,15 @@ int main(void)
 			  {
 			  	  //Tage
 			  	  case 0: //Erste Stelle maximal 3
-					  if(datetime[i] < '0' || datetime[i] >'3')
+					  if(str_date[i] < '0' || str_date[i] >'3')
 					  {
 						  error = 1;
 					  }
 					  break;
 
 			  	  case 1:
-					  if((datetime[i] < '0' || datetime[i] > '9')
-							  || (datetime[i-1] == '3' && datetime[i] > '1')) // >31
+					  if((str_date[i] < '0' || str_date[i] > '9')
+							  || (str_date[i-1] == '3' && str_date[i] > '1')) // >31
 					  {
 						  error = 1;
 					  }
@@ -179,15 +180,15 @@ int main(void)
 
 				  //Monate
 			  	  case 3: //Erste Stelle maximal 1
-					  if(datetime[i] < '0' || datetime[i] > '1')
+					  if(str_date[i] < '0' || str_date[i] > '1')
 					  {
 						  error = 1;
 					  }
 					  break;
 
 			  	  case 4:
-					  if((datetime[i] < '0' || datetime[i] > '9')
-							  || (datetime[i-1] == '1' && datetime[i] > '2')) // > 12
+					  if((str_date[i] < '0' || str_date[i] > '9')
+							  || (str_date[i-1] == '1' && str_date[i] > '2')) // > 12
 					  {
 						  error = 1;
 					  }
@@ -195,15 +196,15 @@ int main(void)
 
 			      //Stunden
 			  	  case 8: //Erste Stelle maximal 2
-				  if(datetime[i] < '0' || datetime[i] > '2')
+				  if(str_date[i] < '0' || str_date[i] > '2')
 				  {
 					  error = 1;
 				  }
 				  break;
 
 			  	  case 9:
-				  if((datetime[i] < '0' || datetime[i] > '9')
-						  || (datetime[i-1] == '2' && datetime[i] > '3')) // > 23
+				  if((str_date[i] < '0' || str_date[i] > '9')
+						  || (str_date[i-1] == '2' && str_date[i] > '3')) // > 23
 				  {
 					  error = 1;
 				  }
@@ -212,7 +213,7 @@ int main(void)
 				  //Handling Minuten & Sekunden
 			  case 11:
 			  case 14: //Erste Stelle maximal 5
-				  if(datetime[i] < '0' || datetime[i] > '5')
+				  if(str_date[i] < '0' || str_date[i] > '5')
 				  {
 					  error = 1;
 				  }
@@ -220,7 +221,7 @@ int main(void)
 
 			  case 12:
 			  case 15:
-				  if(datetime[i] < '0' || datetime[i] > '9') // > 59
+				  if(str_date[i] < '0' || str_date[i] > '9') // > 59
 				  {
 					  error = 1;
 				  }
@@ -258,34 +259,16 @@ int main(void)
 			  if(error < 1)
 			  {
 				  //Set RTC
-				  tag[0] = datetime[0];
-				  tag[1] = datetime[1];
+				  sDate.Date = calculate_number(str_date[0], str_date[1]);
+				  sDate.Month = calculate_number(str_date[3], str_date[4]);
+				  sTime.Hours = calculate_number(str_date[8], str_date[9]) + 1;
+				  sTime.Minutes = calculate_number(str_date[11], str_date[12]);
+				  sTime.Seconds = calculate_number(str_date[14], str_date[15]);
 
-				  monat[0] = datetime[3];
-				  monat[1] = datetime[4];
-
-				  stunde[0] = datetime[8];
-				  stunde[1] = datetime[9];
-
-				  minute[0] = datetime[11];
-				  minute[1] = datetime[12];
-
-				  sekunde[0] = datetime[14];
-				  sekunde[1] = datetime[15];
-
-
-				  //TODO: Date geht noch nicht???? Lösungsweg: Debug-Funktion?
-				  sDate.Date = atoi(tag);
-
-
-
-				  sDate.Month = atoi(monat);
-				  sTime.Hours = atoi(stunde);
-				  sTime.Minutes = atoi(minute);
-				  sTime.Seconds = atoi(sekunde);
 
 				  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
 				  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
+				  HAL_Delay(420);
 			  }
 			  else
 			  { //Error resetten
@@ -299,15 +282,14 @@ int main(void)
 
     HAL_Delay(10);
 
+
     HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-    sprintf(datetime_LCD,"%02d:%02d - %02d:%02d:%02d",sDate.Date,sDate.Month,sTime.Hours,sTime.Minutes,sTime.Seconds);
 
+    sprintf(datetime_LCD, "%02d:%02d - %02d:%02d:%02d", sDate.Date, sDate.Month, sTime.Hours, sTime.Minutes, sTime.Seconds);
     //Jedesmal ausprinten
     lcd_send_string(datetime_LCD);
 	lcd_send_cmd(0x02);
-
-	HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -437,7 +419,7 @@ static void MX_RTC_Init(void)
   */
   sTime.Hours = 0x1;
   sTime.Minutes = 0x1;
-  sTime.Seconds = 0x0;
+  sTime.Seconds = 0x1;
   sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
   sTime.StoreOperation = RTC_STOREOPERATION_RESET;
   if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
@@ -584,6 +566,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+uint8_t calculate_number(char zehner, char einer)
+{
+	uint8_t zehn = zehner - 48;
+	uint8_t ein = einer - 48;
+
+	return (zehn*10)+ein;
+}
 void lcd_send_cmd (char cmd)
 {
 	char data_u, data_l;
