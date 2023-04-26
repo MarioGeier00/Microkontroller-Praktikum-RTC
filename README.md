@@ -28,7 +28,8 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 
 ### I²C display
 - [x] initializes display
-- [x] 
+- [x] use the I²C-2 and set to 100kHz clock frequency (max rating of display)
+- [x] connect `PB -> SDA`, `PB9 -> SCL`, GND and a supply voltage of 5V
 - [ ] check and document initialisation and transfer code
 
 #### Reduce HAL_I2C_Transmit overhead
