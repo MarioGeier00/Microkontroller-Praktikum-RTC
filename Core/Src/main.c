@@ -45,6 +45,8 @@ I2C_HandleTypeDef hi2c1;
 
 RTC_HandleTypeDef hrtc;
 
+TIM_HandleTypeDef htim6;
+
 UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
@@ -60,6 +62,7 @@ static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_RTC_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 void lcd_send_cmd (char cmd);
 void lcd_send_data (char data);
@@ -122,184 +125,19 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim6);
   lcd_init();
   HAL_Delay(1000);
-
   //Terminal Initialisieren
   HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
-
-
-
-
+  HAL_UART_Receive_IT (&huart3, (uint8_t*)&data, 1);
   /* USER CODE END 2 */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-	  //Eingabe auffangen
-	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 100);
-
-	  //Eingabe wurde getätigt
-	  if(data != '\0')
-	  {
-		  HAL_UART_Transmit(&huart3, (uint8_t*)&data, 1, 100);
-
-		  str_date[i] = data;
-
-		  //Format überprüfen
-		  if(((i == 2 || i == 10 || i == 13) && data != ':' ) //Doppelpunkt
-				  || ((i == 5 || i == 7) && data != ' ') //Leerzeichen
-				  || (i == 6 && data != '-')) // Bindestrich
-		  {
-			  error = 1;
-		  }
-		  else
-		  {
-			  //Überprüfung der Eingabe auf richtige Zahlen
-			  switch(i)
-			  {
-			  	  //Tage
-			  	  case 0: //Erste Stelle maximal 3
-					  if(str_date[i] < '0' || str_date[i] >'3')
-					  {
-						  error = 1;
-					  }
-					  break;
-
-			  	  case 1:
-					  if((str_date[i] < '0' || str_date[i] > '9')
-							  || (str_date[i-1] == '3' && str_date[i] > '1')) // >31
-					  {
-						  error = 1;
-					  }
-					  break;
-
-				  //Monate
-			  	  case 3: //Erste Stelle maximal 1
-					  if(str_date[i] < '0' || str_date[i] > '1')
-					  {
-						  error = 1;
-					  }
-					  break;
-
-			  	  case 4:
-					  if((str_date[i] < '0' || str_date[i] > '9')
-							  || (str_date[i-1] == '1' && str_date[i] > '2')) // > 12
-					  {
-						  error = 1;
-					  }
-					  break;
-
-			      //Stunden
-			  	  case 8: //Erste Stelle maximal 2
-				  if(str_date[i] < '0' || str_date[i] > '2')
-				  {
-					  error = 1;
-				  }
-				  break;
-
-			  	  case 9:
-				  if((str_date[i] < '0' || str_date[i] > '9')
-						  || (str_date[i-1] == '2' && str_date[i] > '3')) // > 23
-				  {
-					  error = 1;
-				  }
-				  break;
-
-				  //Handling Minuten & Sekunden
-			  case 11:
-			  case 14: //Erste Stelle maximal 5
-				  if(str_date[i] < '0' || str_date[i] > '5')
-				  {
-					  error = 1;
-				  }
-				  break;
-
-			  case 12:
-			  case 15:
-				  if(str_date[i] < '0' || str_date[i] > '9') // > 59
-				  {
-					  error = 1;
-				  }
-				  break;
-
-			  default: // default ist 2, 5, 6, 7, 10, 13 (Zeichen)
-				  break;
-			  }
-		  }
-
-
-
-
-
-
-
-		  //i wird hier ständig um 1 erhöht, wenn eine Eingabe kommt
-		  i++;
-
-		  //Reset & Error-Handling
-		  if(i > 15 || error > 0)
-		  {
-
-			  //Error Message:
-			  if(error > 0)
-			  {
-				  HAL_UART_Transmit(&huart3, (uint8_t*)&IllegalFormat, strlen(IllegalFormat), 1000);
-				  HAL_Delay(2000);
-			  }
-
-			  //Reset Variable
-			  i = 0;
-			  //Reset Terminal
-			  HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
-			  if(error < 1)
-			  {
-				  //Set RTC
-				  date_rtc.Date = calculate_number(str_date[0], str_date[1]);
-				  date_rtc.Month = calculate_number(str_date[3], str_date[4]);
-				  //Immer Schaltjahr:
-				  date_rtc.Year = schaltjahr;
-
-				  time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
-				  time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
-				  time_rtc.Seconds = calculate_number(str_date[14], str_date[15]);
-
-				  if(date_rtc.Month == 2 && date_rtc.Date > 29)
-					  date_rtc.Date = 29;
-				  else if((date_rtc.Month == 4 || date_rtc.Month == 6
-						  || date_rtc.Month == 9 || date_rtc.Month == 11)
-						  && date_rtc.Date > 30)
-				  {
-					  date_rtc.Date = 30;
-				  }
-
-				  HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
-				  HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-				  HAL_Delay(200);
-			  }
-			  else
-			  { //Error resetten
-				  error = 0;
-			  }
-		  }
-		  data = '\0';
-	  }
-
-
-	//Set Display: RTC
-    HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
-    //Immer Schaltjahr
-    if(date_rtc.Year != schaltjahr)
-    	date_rtc.Year = schaltjahr;
-
-    sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
-    lcd_send_string(datetime_LCD);
-	lcd_send_cmd(0x02); //Reset Cursor
-	HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -452,6 +290,44 @@ static void MX_RTC_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 47999;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 200;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -576,6 +452,166 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
+{
+	//Eingabe auffangen
+
+	//	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 100);
+		  //Eingabe wurde getätigt
+		  if(data != '\0')
+		  {
+			  HAL_UART_Transmit(&huart3, (uint8_t*)&data, 1, 100);
+
+			  str_date[i] = data;
+
+			  //Format überprüfen
+			  if(((i == 2 || i == 10 || i == 13) && data != ':' ) //Doppelpunkt
+					  || ((i == 5 || i == 7) && data != ' ') //Leerzeichen
+					  || (i == 6 && data != '-')) // Bindestrich
+			  {
+				  error = 1;
+			  }
+			  else
+			  {
+				  //Überprüfung der Eingabe auf richtige Zahlen
+				  switch(i)
+				  {
+				  	  //Tage
+				  	  case 0: //Erste Stelle maximal 3
+						  if(str_date[i] < '0' || str_date[i] >'3')
+						  {
+							  error = 1;
+						  }
+						  break;
+
+				  	  case 1:
+						  if((str_date[i] < '0' || str_date[i] > '9')
+								  || (str_date[i-1] == '3' && str_date[i] > '1')) // >31
+						  {
+							  error = 1;
+						  }
+						  break;
+
+					  //Monate
+				  	  case 3: //Erste Stelle maximal 1
+						  if(str_date[i] < '0' || str_date[i] > '1')
+						  {
+							  error = 1;
+						  }
+						  break;
+
+				  	  case 4:
+						  if((str_date[i] < '0' || str_date[i] > '9')
+								  || (str_date[i-1] == '1' && str_date[i] > '2')) // > 12
+						  {
+							  error = 1;
+						  }
+						  break;
+
+				      //Stunden
+				  	  case 8: //Erste Stelle maximal 2
+					  if(str_date[i] < '0' || str_date[i] > '2')
+					  {
+						  error = 1;
+					  }
+					  break;
+
+				  	  case 9:
+					  if((str_date[i] < '0' || str_date[i] > '9')
+							  || (str_date[i-1] == '2' && str_date[i] > '3')) // > 23
+					  {
+						  error = 1;
+					  }
+					  break;
+
+					  //Handling Minuten & Sekunden
+				  case 11:
+				  case 14: //Erste Stelle maximal 5
+					  if(str_date[i] < '0' || str_date[i] > '5')
+					  {
+						  error = 1;
+					  }
+					  break;
+
+				  case 12:
+				  case 15:
+					  if(str_date[i] < '0' || str_date[i] > '9') // > 59
+					  {
+						  error = 1;
+					  }
+					  break;
+
+				  default: // default ist 2, 5, 6, 7, 10, 13 (Zeichen)
+					  break;
+				  }
+			  }
+			  //i wird hier ständig um 1 erhöht, wenn eine Eingabe kommt
+			  i++;
+
+			  //Reset & Error-Handling
+			  if(i > 15 || error > 0)
+			  {
+
+				  //Error Message:
+				  if(error > 0)
+				  {
+					  HAL_UART_Transmit(&huart3, (uint8_t*)&IllegalFormat, strlen(IllegalFormat), 1000);
+					  HAL_Delay(2000);
+				  }
+
+				  //Reset Variable
+				  i = 0;
+				  //Reset Terminal
+				  HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
+				  if(error < 1)
+				  {
+					  //Set RTC
+					  date_rtc.Date = calculate_number(str_date[0], str_date[1]);
+					  date_rtc.Month = calculate_number(str_date[3], str_date[4]);
+					  //Immer Schaltjahr:
+					  date_rtc.Year = schaltjahr;
+
+					  time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
+					  time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
+					  time_rtc.Seconds = calculate_number(str_date[14], str_date[15]);
+
+					  if(date_rtc.Month == 2 && date_rtc.Date > 29)
+						  date_rtc.Date = 29;
+					  else if((date_rtc.Month == 4 || date_rtc.Month == 6
+							  || date_rtc.Month == 9 || date_rtc.Month == 11)
+							  && date_rtc.Date > 30)
+					  {
+						  date_rtc.Date = 30;
+					  }
+
+					  HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+					  HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
+					  HAL_Delay(200);
+				  }
+				  else
+				  { //Error resetten
+					  error = 0;
+				  }
+			  }
+			  data = '\0';
+		  }
+		  //Reaktivieren: Interrupt
+		  HAL_UART_Receive_IT (&huart3, (uint8_t*)&data, 1);
+
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	//Set Display: RTC
+		  HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
+		  HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+		  //Immer Schaltjahr
+		  if(date_rtc.Year != schaltjahr)
+			date_rtc.Year = schaltjahr;
+
+		  sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
+		  lcd_send_string(datetime_LCD);
+		  lcd_send_cmd(0x02);
+}
 uint8_t calculate_number(char zehner, char einer)
 {
 	uint8_t zehn = zehner - 48;
@@ -637,13 +673,6 @@ void lcd_send_string (char *str){
 
 	while (*str) lcd_send_data (*str++);
 }
-/*
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    HAL_UART_Transmit(&huart3, RX_Data, 16, 100);
-    HAL_UART_Receive_IT(&huart3, RX_Data, 16);
-}
-*/
 /* USER CODE END 4 */
 
 /**
