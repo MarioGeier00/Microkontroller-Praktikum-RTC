@@ -65,10 +65,9 @@ static void MX_RTC_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 void lcd_send_cmd(char cmd);
-void lcd_send_data(char data);
 void lcd_init(void);
-void lcd_send_string(char *str);
 uint8_t calculate_number(char zehner, char einer);
+void write_char_4bit_mode(uint8_t destination[], uint16_t index, char data);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -80,7 +79,12 @@ RTC_DateTypeDef date_rtc;
 // Am Anfang initialisieren!
 char data = '\0';
 char str_date[16] = {'\0'};
-char datetime_LCD[22] = {'\0'};
+char datetime_string[22] = {'\0'};
+
+// 5 times 2 digits, 6 spacing characters times 4
+uint8_t display_output[64];
+HAL_StatusTypeDef lcd_write_result = 0;
+
 uint8_t i = 0;
 uint8_t schaltjahr = 0; // = Schaltjahr
 
@@ -92,9 +96,9 @@ uint8_t error = 0; // False
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -125,9 +129,10 @@ int main(void)
   MX_RTC_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+
+  // starts timer for rtc to display synchronization
   HAL_TIM_Base_Start_IT(&htim6);
   lcd_init();
-  HAL_Delay(1000);
   // Terminal Initialisieren
   HAL_UART_Transmit(&huart3, (uint8_t *)&space, strlen(space), 1000);
   HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
@@ -145,23 +150,23 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+   * in the RCC_OscInitTypeDef structure.
+   */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -177,9 +182,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -192,10 +196,10 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_I2C1_Init(void)
 {
 
@@ -222,14 +226,13 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
-  * @brief RTC Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief RTC Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_RTC_Init(void)
 {
 
@@ -245,7 +248,7 @@ static void MX_RTC_Init(void)
   /* USER CODE END RTC_Init 1 */
 
   /** Initialize RTC Only
-  */
+   */
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
   hrtc.Init.AsynchPrediv = 127;
@@ -263,7 +266,7 @@ static void MX_RTC_Init(void)
   /* USER CODE END Check_RTC_BKUP */
 
   /** Initialize RTC and set the Time and Date
-  */
+   */
   sTime.Hours = 23;
   sTime.Minutes = 59;
   sTime.Seconds = 45;
@@ -285,14 +288,13 @@ static void MX_RTC_Init(void)
   /* USER CODE BEGIN RTC_Init 2 */
 
   /* USER CODE END RTC_Init 2 */
-
 }
 
 /**
-  * @brief TIM6 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM6 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM6_Init(void)
 {
 
@@ -323,14 +325,13 @@ static void MX_TIM6_Init(void)
   /* USER CODE BEGIN TIM6_Init 2 */
 
   /* USER CODE END TIM6_Init 2 */
-
 }
 
 /**
-  * @brief USART3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART3_UART_Init(void)
 {
 
@@ -356,14 +357,13 @@ static void MX_USART3_UART_Init(void)
   /* USER CODE BEGIN USART3_Init 2 */
 
   /* USER CODE END USART3_Init 2 */
-
 }
 
 /**
-  * @brief USB_OTG_FS Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USB_OTG_FS Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USB_OTG_FS_PCD_Init(void)
 {
 
@@ -392,19 +392,18 @@ static void MX_USB_OTG_FS_PCD_Init(void)
   /* USER CODE BEGIN USB_OTG_FS_Init 2 */
 
   /* USER CODE END USB_OTG_FS_Init 2 */
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -415,7 +414,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD1_Pin | LD3_Pin | LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
@@ -427,7 +426,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD1_Pin LD3_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|LD2_Pin;
+  GPIO_InitStruct.Pin = LD1_Pin | LD3_Pin | LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -446,16 +445,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  // Eingabe auffangen
-
-  //	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 100);
   // Eingabe wurde getätigt
   if (data != '\0')
   {
@@ -499,7 +495,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         break;
 
       case 4:
-        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '1' && str_date[i] > '2')) // > 12
+        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '1' && str_date[i] > '2')) // >12
         {
           error = 1;
         }
@@ -514,7 +510,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         break;
 
       case 9:
-        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '2' && str_date[i] > '3')) // > 23
+        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '2' && str_date[i] > '3')) // >23
         {
           error = 1;
         }
@@ -592,27 +588,51 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   // Reaktivieren: Interrupt
   HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
 }
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  // Set Display: RTC
+  // TODO: use HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format) instead of TIM6
+
+  // Get RTC values
   HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-  //		  HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format)
   HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+
   // Immer Schaltjahr
   if (date_rtc.Year != schaltjahr)
     date_rtc.Year = schaltjahr;
 
-  sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
-  lcd_send_string(datetime_LCD);
+  sprintf(datetime_string, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
+
+  // convert data from datetime_LCD to display_time for LCD 4bit mode
+  for (uint16_t i = 0, k = 0; i < 16; i++, k += 4)
+  {
+    write_char_4bit_mode(display_output, k, datetime_string[i]);
+  }
+
+  // send 4 times the data of datetime_LCD because of LCD 4bit mode -> 64
+  lcd_write_result = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)display_output, 64, 1000);
+
+  // activates the red led on transmission failure
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, lcd_write_result != HAL_OK);
+
+  // set cursor to home
   lcd_send_cmd(0x02);
 }
-uint8_t calculate_number(char zehner, char einer)
-{
-  uint8_t zehn = zehner - 48;
-  uint8_t ein = einer - 48;
 
-  return (zehn * 10) + ein;
+/*
+Converts one (ascii) byte to I²C display instructions
+*/
+void write_char_4bit_mode(uint8_t destination[], uint16_t index, char data)
+{
+  char data_u, data_l;
+  data_u = (data & 0xf0);
+  data_l = ((data << 4) & 0xf0);
+  destination[index] = data_u | 0x0D;     // en=1, rs=1
+  destination[index + 1] = data_u | 0x09; // en=0, rs=1
+  destination[index + 2] = data_l | 0x0D; // en=1, rs=1
+  destination[index + 3] = data_l | 0x09; // en=0, rs=1
 }
+
 void lcd_send_cmd(char cmd)
 {
   char data_u, data_l;
@@ -620,27 +640,12 @@ void lcd_send_cmd(char cmd)
   data_u = (cmd & 0xf0);
   data_l = ((cmd << 4) & 0xf0);
   data_t[0] = data_u | 0x0C; // en=1, rs=0
-  //                00001100
   data_t[1] = data_u | 0x08; // en=0, rs=0
-  //                    1000
   data_t[2] = data_l | 0x0C; // en=1, rs=0
   data_t[3] = data_l | 0x08; // en=0, rs=0
   HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)data_t, 4, 100);
 }
-void lcd_send_data(char data)
-{
-  char data_u, data_l;
-  uint8_t data_t[4];
-  data_u = (data & 0xf0);
-  data_l = ((data << 4) & 0xf0);
-  data_t[0] = data_u | 0x0D; // en=1, rs=1
-  //                    1101
-  data_t[1] = data_u | 0x09; // en=0, rs=1
-  //                    1001
-  data_t[2] = data_l | 0x0D; // en=1, rs=1
-  data_t[3] = data_l | 0x09; // en=0, rs=1
-  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)data_t, 4, 100);
-}
+
 void lcd_init(void)
 {
   // 4 bit initialisation
@@ -662,24 +667,25 @@ void lcd_init(void)
   lcd_send_cmd(0x08); // Display on/off control --> D=0,C=0, B=0  ---> display off
   HAL_Delay(1);
   lcd_send_cmd(0x01); // clear display
-  HAL_Delay(1);
-  HAL_Delay(1);
+  HAL_Delay(2);
   lcd_send_cmd(0x06); // Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
   HAL_Delay(1);
   lcd_send_cmd(0x0C); // Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
 }
-void lcd_send_string(char *str)
-{
 
-  while (*str)
-    lcd_send_data(*str++);
+uint8_t calculate_number(char zehner, char einer)
+{
+  uint8_t zehn = zehner - 48;
+  uint8_t ein = einer - 48;
+
+  return (zehn * 10) + ein;
 }
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -691,14 +697,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
