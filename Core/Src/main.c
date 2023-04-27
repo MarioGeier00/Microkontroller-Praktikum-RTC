@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2023 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SLAVE_ADDRESS_LCD (0x27<<1)
+#define SLAVE_ADDRESS_LCD (0x27 << 1)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,32 +64,30 @@ static void MX_I2C1_Init(void);
 static void MX_RTC_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
-void lcd_send_cmd (char cmd);
-void lcd_send_data (char data);
-void lcd_init (void);
-void lcd_send_string (char *str);
+void lcd_send_cmd(char cmd);
+void lcd_send_data(char data);
+void lcd_init(void);
+void lcd_send_string(char *str);
 uint8_t calculate_number(char zehner, char einer);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//RTC
+// RTC
 RTC_TimeTypeDef time_rtc;
 RTC_DateTypeDef date_rtc;
 
-
-//Am Anfang initialisieren!
+// Am Anfang initialisieren!
 char data = '\0';
 char str_date[16] = {'\0'};
 char datetime_LCD[22] = {'\0'};
 uint8_t i = 0;
 uint8_t schaltjahr = 0; // = Schaltjahr
 
-//Terminal Handling Variables
+// Terminal Handling Variables
 char space[] = "\rTT:MM - HH:MM:SS\r";
 char IllegalFormat[] = "\rFalsche Eingabe!";
-uint8_t error = 0; //False
-
+uint8_t error = 0; // False
 
 /* USER CODE END 0 */
 
@@ -130,10 +128,11 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
   lcd_init();
   HAL_Delay(1000);
-  //Terminal Initialisieren
-  HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
-  HAL_UART_Receive_IT (&huart3, (uint8_t*)&data, 1);
+  // Terminal Initialisieren
+  HAL_UART_Transmit(&huart3, (uint8_t *)&space, strlen(space), 1000);
+  HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
   /* USER CODE END 2 */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -307,7 +306,7 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 9600;
+  htim6.Init.Prescaler = 9599;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim6.Init.Period = 10000;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -452,233 +451,228 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	//Eingabe auffangen
+  // Eingabe auffangen
 
-	//	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 100);
-		  //Eingabe wurde getätigt
-		  if(data != '\0')
-		  {
-			  HAL_UART_Transmit(&huart3, (uint8_t*)&data, 1, 100);
+  //	  HAL_UART_Receive(&huart3, (uint8_t*)&data, 1, 100);
+  // Eingabe wurde getätigt
+  if (data != '\0')
+  {
+    HAL_UART_Transmit(&huart3, (uint8_t *)&data, 1, 100);
 
-			  str_date[i] = data;
+    str_date[i] = data;
 
-			  //Format überprüfen
-			  if(((i == 2 || i == 10 || i == 13) && data != ':' ) //Doppelpunkt
-					  || ((i == 5 || i == 7) && data != ' ') //Leerzeichen
-					  || (i == 6 && data != '-')) // Bindestrich
-			  {
-				  error = 1;
-			  }
-			  else
-			  {
-				  //Überprüfung der Eingabe auf richtige Zahlen
-				  switch(i)
-				  {
-				  	  //Tage
-				  	  case 0: //Erste Stelle maximal 3
-						  if(str_date[i] < '0' || str_date[i] >'3')
-						  {
-							  error = 1;
-						  }
-						  break;
+    // Format überprüfen
+    if (((i == 2 || i == 10 || i == 13) && data != ':') // Doppelpunkt
+        || ((i == 5 || i == 7) && data != ' ')          // Leerzeichen
+        || (i == 6 && data != '-'))                     // Bindestrich
+    {
+      error = 1;
+    }
+    else
+    {
+      // Überprüfung der Eingabe auf richtige Zahlen
+      switch (i)
+      {
+      // Tage
+      case 0: // Erste Stelle maximal 3
+        if (str_date[i] < '0' || str_date[i] > '3')
+        {
+          error = 1;
+        }
+        break;
 
-				  	  case 1:
-						  if((str_date[i] < '0' || str_date[i] > '9')
-								  || (str_date[i-1] == '3' && str_date[i] > '1')) // >31
-						  {
-							  error = 1;
-						  }
-						  break;
+      case 1:
+        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '3' && str_date[i] > '1')) // >31
+        {
+          error = 1;
+        }
+        break;
 
-					  //Monate
-				  	  case 3: //Erste Stelle maximal 1
-						  if(str_date[i] < '0' || str_date[i] > '1')
-						  {
-							  error = 1;
-						  }
-						  break;
+        // Monate
+      case 3: // Erste Stelle maximal 1
+        if (str_date[i] < '0' || str_date[i] > '1')
+        {
+          error = 1;
+        }
+        break;
 
-				  	  case 4:
-						  if((str_date[i] < '0' || str_date[i] > '9')
-								  || (str_date[i-1] == '1' && str_date[i] > '2')) // > 12
-						  {
-							  error = 1;
-						  }
-						  break;
+      case 4:
+        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '1' && str_date[i] > '2')) // > 12
+        {
+          error = 1;
+        }
+        break;
 
-				      //Stunden
-				  	  case 8: //Erste Stelle maximal 2
-					  if(str_date[i] < '0' || str_date[i] > '2')
-					  {
-						  error = 1;
-					  }
-					  break;
+      // Stunden
+      case 8: // Erste Stelle maximal 2
+        if (str_date[i] < '0' || str_date[i] > '2')
+        {
+          error = 1;
+        }
+        break;
 
-				  	  case 9:
-					  if((str_date[i] < '0' || str_date[i] > '9')
-							  || (str_date[i-1] == '2' && str_date[i] > '3')) // > 23
-					  {
-						  error = 1;
-					  }
-					  break;
+      case 9:
+        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '2' && str_date[i] > '3')) // > 23
+        {
+          error = 1;
+        }
+        break;
 
-					  //Handling Minuten & Sekunden
-				  case 11:
-				  case 14: //Erste Stelle maximal 5
-					  if(str_date[i] < '0' || str_date[i] > '5')
-					  {
-						  error = 1;
-					  }
-					  break;
+        // Handling Minuten & Sekunden
+      case 11:
+      case 14: // Erste Stelle maximal 5
+        if (str_date[i] < '0' || str_date[i] > '5')
+        {
+          error = 1;
+        }
+        break;
 
-				  case 12:
-				  case 15:
-					  if(str_date[i] < '0' || str_date[i] > '9') // > 59
-					  {
-						  error = 1;
-					  }
-					  break;
+      case 12:
+      case 15:
+        if (str_date[i] < '0' || str_date[i] > '9') // > 59
+        {
+          error = 1;
+        }
+        break;
 
-				  default: // default ist 2, 5, 6, 7, 10, 13 (Zeichen)
-					  break;
-				  }
-			  }
-			  //i wird hier ständig um 1 erhöht, wenn eine Eingabe kommt
-			  i++;
+      default: // default ist 2, 5, 6, 7, 10, 13 (Zeichen)
+        break;
+      }
+    }
+    // i wird hier ständig um 1 erhöht, wenn eine Eingabe kommt
+    i++;
 
-			  //Reset & Error-Handling
-			  if(i > 15 || error > 0)
-			  {
+    // Reset & Error-Handling
+    if (i > 15 || error > 0)
+    {
 
-				  //Error Message:
-				  if(error > 0)
-				  {
-					  HAL_UART_Transmit(&huart3, (uint8_t*)&IllegalFormat, strlen(IllegalFormat), 1000);
-					  HAL_Delay(2000);
-				  }
+      // Error Message:
+      if (error > 0)
+      {
+        HAL_UART_Transmit(&huart3, (uint8_t *)&IllegalFormat, strlen(IllegalFormat), 1000);
+        HAL_Delay(2000);
+      }
 
-				  //Reset Variable
-				  i = 0;
-				  //Reset Terminal
-				  HAL_UART_Transmit(&huart3, (uint8_t*)&space, strlen(space), 1000);
-				  if(error < 1)
-				  {
-					  //Set RTC
-					  date_rtc.Date = calculate_number(str_date[0], str_date[1]);
-					  date_rtc.Month = calculate_number(str_date[3], str_date[4]);
-					  //Immer Schaltjahr:
-					  date_rtc.Year = schaltjahr;
+      // Reset Variable
+      i = 0;
+      // Reset Terminal
+      HAL_UART_Transmit(&huart3, (uint8_t *)&space, strlen(space), 1000);
+      if (error < 1)
+      {
+        // Set RTC
+        date_rtc.Date = calculate_number(str_date[0], str_date[1]);
+        date_rtc.Month = calculate_number(str_date[3], str_date[4]);
+        // Immer Schaltjahr:
+        date_rtc.Year = schaltjahr;
 
-					  time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
-					  time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
-					  time_rtc.Seconds = calculate_number(str_date[14], str_date[15]);
+        time_rtc.Hours = calculate_number(str_date[8], str_date[9]);
+        time_rtc.Minutes = calculate_number(str_date[11], str_date[12]);
+        time_rtc.Seconds = calculate_number(str_date[14], str_date[15]);
 
-					  if(date_rtc.Month == 2 && date_rtc.Date > 29)
-						  date_rtc.Date = 29;
-					  else if((date_rtc.Month == 4 || date_rtc.Month == 6
-							  || date_rtc.Month == 9 || date_rtc.Month == 11)
-							  && date_rtc.Date > 30)
-					  {
-						  date_rtc.Date = 30;
-					  }
+        if (date_rtc.Month == 2 && date_rtc.Date > 29)
+          date_rtc.Date = 29;
+        else if ((date_rtc.Month == 4 || date_rtc.Month == 6 || date_rtc.Month == 9 || date_rtc.Month == 11) && date_rtc.Date > 30)
+        {
+          date_rtc.Date = 30;
+        }
 
-					  HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
-					  HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-					  HAL_Delay(200);
-				  }
-				  else
-				  { //Error resetten
-					  error = 0;
-				  }
-			  }
-			  data = '\0';
-		  }
-		  //Reaktivieren: Interrupt
-		  HAL_UART_Receive_IT (&huart3, (uint8_t*)&data, 1);
-
+        HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+        HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
+        HAL_Delay(200);
+      }
+      else
+      { // Error resetten
+        error = 0;
+      }
+    }
+    data = '\0';
+  }
+  // Reaktivieren: Interrupt
+  HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	//Set Display: RTC
-		  HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-//		  HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format)
-		  HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
-		  //Immer Schaltjahr
-		  if(date_rtc.Year != schaltjahr)
-			date_rtc.Year = schaltjahr;
+  // Set Display: RTC
+  HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
+  //		  HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format)
+  HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
+  // Immer Schaltjahr
+  if (date_rtc.Year != schaltjahr)
+    date_rtc.Year = schaltjahr;
 
-		  sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
-		  lcd_send_string(datetime_LCD);
-		  lcd_send_cmd(0x02);
+  sprintf(datetime_LCD, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
+  lcd_send_string(datetime_LCD);
+  lcd_send_cmd(0x02);
 }
 uint8_t calculate_number(char zehner, char einer)
 {
-	uint8_t zehn = zehner - 48;
-	uint8_t ein = einer - 48;
+  uint8_t zehn = zehner - 48;
+  uint8_t ein = einer - 48;
 
-	return (zehn*10)+ein;
+  return (zehn * 10) + ein;
 }
-void lcd_send_cmd (char cmd)
+void lcd_send_cmd(char cmd)
 {
-	char data_u, data_l;
-	uint8_t data_t[4];
-	data_u = (cmd&0xf0);
-	data_l = ((cmd<<4)&0xf0);
-	data_t[0] = data_u|0x0C;  //en=1, rs=0
-  //                00001100 
-	data_t[1] = data_u|0x08;  //en=0, rs=0
+  char data_u, data_l;
+  uint8_t data_t[4];
+  data_u = (cmd & 0xf0);
+  data_l = ((cmd << 4) & 0xf0);
+  data_t[0] = data_u | 0x0C; // en=1, rs=0
+  //                00001100
+  data_t[1] = data_u | 0x08; // en=0, rs=0
   //                    1000
-	data_t[2] = data_l|0x0C;  //en=1, rs=0
-	data_t[3] = data_l|0x08;  //en=0, rs=0
-	HAL_I2C_Master_Transmit (&hi2c1, SLAVE_ADDRESS_LCD,(uint8_t *) data_t, 4, 100);
+  data_t[2] = data_l | 0x0C; // en=1, rs=0
+  data_t[3] = data_l | 0x08; // en=0, rs=0
+  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)data_t, 4, 100);
 }
-void lcd_send_data (char data)
+void lcd_send_data(char data)
 {
-	char data_u, data_l;
-	uint8_t data_t[4];
-	data_u = (data&0xf0);
-	data_l = ((data<<4)&0xf0);
-	data_t[0] = data_u|0x0D;  //en=1, rs=1
+  char data_u, data_l;
+  uint8_t data_t[4];
+  data_u = (data & 0xf0);
+  data_l = ((data << 4) & 0xf0);
+  data_t[0] = data_u | 0x0D; // en=1, rs=1
   //                    1101
-  data_t[1] = data_u|0x09;  //en=0, rs=1
+  data_t[1] = data_u | 0x09; // en=0, rs=1
   //                    1001
-	data_t[2] = data_l|0x0D;  //en=1, rs=1
-	data_t[3] = data_l|0x09;  //en=0, rs=1
-	HAL_I2C_Master_Transmit (&hi2c1, SLAVE_ADDRESS_LCD,(uint8_t *) data_t, 4, 100);
+  data_t[2] = data_l | 0x0D; // en=1, rs=1
+  data_t[3] = data_l | 0x09; // en=0, rs=1
+  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)data_t, 4, 100);
 }
-void lcd_init (void)
+void lcd_init(void)
 {
-	// 4 bit initialisation
-	HAL_Delay(50);  // wait for >40ms
-	lcd_send_cmd (0x30);
-	HAL_Delay(5);  // wait for >4.1ms
-	lcd_send_cmd (0x30);
-	HAL_Delay(1);  // wait for >100us
-	lcd_send_cmd (0x30);
-	HAL_Delay(10);
-	lcd_send_cmd (0x20);  // 4bit mode
-	HAL_Delay(10);
+  // 4 bit initialisation
+  HAL_Delay(50); // wait for >40ms
+  lcd_send_cmd(0x30);
+  HAL_Delay(5); // wait for >4.1ms
+  lcd_send_cmd(0x30);
+  HAL_Delay(1); // wait for >100us
+  lcd_send_cmd(0x30);
+  HAL_Delay(10);
+  lcd_send_cmd(0x20); // 4bit mode
+  HAL_Delay(10);
 
   // dislay initialisation
-	lcd_send_cmd (0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
-  //           00101000
-  //           001DNFxx
-	HAL_Delay(1);
-	lcd_send_cmd (0x08); //Display on/off control --> D=0,C=0, B=0  ---> display off
-	HAL_Delay(1);
-	lcd_send_cmd (0x01);  // clear display
-	HAL_Delay(1);
-	HAL_Delay(1);
-	lcd_send_cmd (0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
-	HAL_Delay(1);
-	lcd_send_cmd (0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
-
+  lcd_send_cmd(0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
+                      //           00101000
+                      //           001DNFxx
+  HAL_Delay(1);
+  lcd_send_cmd(0x08); // Display on/off control --> D=0,C=0, B=0  ---> display off
+  HAL_Delay(1);
+  lcd_send_cmd(0x01); // clear display
+  HAL_Delay(1);
+  HAL_Delay(1);
+  lcd_send_cmd(0x06); // Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
+  HAL_Delay(1);
+  lcd_send_cmd(0x0C); // Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
 }
-void lcd_send_string (char *str){
+void lcd_send_string(char *str)
+{
 
-	while (*str) lcd_send_data (*str++);
+  while (*str)
+    lcd_send_data(*str++);
 }
 /* USER CODE END 4 */
 
