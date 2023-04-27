@@ -45,8 +45,6 @@ I2C_HandleTypeDef hi2c1;
 
 RTC_HandleTypeDef hrtc;
 
-TIM_HandleTypeDef htim6;
-
 UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
@@ -62,7 +60,6 @@ static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_RTC_Init(void);
-static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 void lcd_send_cmd(char cmd);
 void lcd_init(void);
@@ -92,7 +89,6 @@ uint8_t schaltjahr = 0; // = Schaltjahr
 char space[] = "\rTT:MM - HH:MM:SS\r";
 char IllegalFormat[] = "\rFalsche Eingabe!";
 uint8_t error = 0; // False
-
 /* USER CODE END 0 */
 
 /**
@@ -127,12 +123,10 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
-  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
-  // starts timer for rtc to display synchronization
-  HAL_TIM_Base_Start_IT(&htim6);
   lcd_init();
+
   // Terminal Initialisieren
   HAL_UART_Transmit(&huart3, (uint8_t *)&space, strlen(space), 1000);
   HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
@@ -242,6 +236,7 @@ static void MX_RTC_Init(void)
 
   RTC_TimeTypeDef sTime = {0};
   RTC_DateTypeDef sDate = {0};
+  RTC_AlarmTypeDef sAlarm = {0};
 
   /* USER CODE BEGIN RTC_Init 1 */
 
@@ -285,46 +280,27 @@ static void MX_RTC_Init(void)
   {
     Error_Handler();
   }
+
+  /** Enable the Alarm A
+   */
+  sAlarm.AlarmTime.Hours = 0;
+  sAlarm.AlarmTime.Minutes = 0;
+  sAlarm.AlarmTime.Seconds = 0;
+  sAlarm.AlarmTime.SubSeconds = 0;
+  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  sAlarm.AlarmMask = RTC_ALARMMASK_ALL;
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+  sAlarm.AlarmDateWeekDay = 1;
+  sAlarm.Alarm = RTC_ALARM_A;
+  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN RTC_Init 2 */
 
   /* USER CODE END RTC_Init 2 */
-}
-
-/**
- * @brief TIM6 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_TIM6_Init(void)
-{
-
-  /* USER CODE BEGIN TIM6_Init 0 */
-
-  /* USER CODE END TIM6_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM6_Init 1 */
-
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 9599;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 10000;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM6_Init 2 */
-
-  /* USER CODE END TIM6_Init 2 */
 }
 
 /**
@@ -589,9 +565,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
 {
-  // TODO: use HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format) instead of TIM6
 
   // Get RTC values
   HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
@@ -617,6 +592,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   // set cursor to home
   lcd_send_cmd(0x02);
+
+  RTC_AlarmTypeDef rtcInterruptAlarm = {0};
+  rtcInterruptAlarm.AlarmTime.Hours = 0;
+  rtcInterruptAlarm.AlarmTime.Minutes = 0;
+  rtcInterruptAlarm.AlarmTime.Seconds = 0;
+  rtcInterruptAlarm.AlarmTime.SubSeconds = 0;
+  rtcInterruptAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  rtcInterruptAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  rtcInterruptAlarm.AlarmMask = RTC_ALARMMASK_ALL;
+  rtcInterruptAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+  rtcInterruptAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+  rtcInterruptAlarm.AlarmDateWeekDay = 0;
+  rtcInterruptAlarm.Alarm = RTC_ALARM_A;
+  HAL_RTC_SetAlarm_IT(&hrtc, &rtcInterruptAlarm, RTC_FORMAT_BIN);
+
+  // TODO: use HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format) instead of TIM6
 }
 
 /*
