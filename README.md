@@ -36,5 +36,5 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 #### Reduce HAL_I2C_Transmit overhead
 HAL_I2C_Transmit is expensive because of decreased I²C speed of the display!
 - [x] send all characters to the display in one HAL_I2C_Transmit call
-- [ ] only transfer changed chars
-- [ ] use DMA Controller to transfer the data
+- [x] use asynchronous transmit to transfer the data to the display
+- [ ] ~only transfer changed chars~
