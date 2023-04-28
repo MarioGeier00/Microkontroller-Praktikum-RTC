@@ -593,6 +593,7 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
   // set cursor to home
   lcd_send_cmd(0x02);
 
+  // resets the alarm to trigger the interrupt in the next second
   RTC_AlarmTypeDef rtcInterruptAlarm = {0};
   rtcInterruptAlarm.AlarmTime.Hours = 0;
   rtcInterruptAlarm.AlarmTime.Minutes = 0;
@@ -606,8 +607,6 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
   rtcInterruptAlarm.AlarmDateWeekDay = 0;
   rtcInterruptAlarm.Alarm = RTC_ALARM_A;
   HAL_RTC_SetAlarm_IT(&hrtc, &rtcInterruptAlarm, RTC_FORMAT_BIN);
-
-  // TODO: use HAL_RTC_SetAlarm_IT(&hrtc, sAlarm, Format) instead of TIM6
 }
 
 /*
