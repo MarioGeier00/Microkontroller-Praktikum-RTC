@@ -17,14 +17,14 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 - [x] checks the time input from UART
 - [x] checks the date input from UART
 - [x] uses interrupts to receive input
-- [ ] does not require to type the symbols `:` and `-`
-- [ ] considers leap years
+- [ ] ~does not require to type the symbols `:` and `-`~
+- [x] considers leap years
 - [ ] document and beautify RTC code
 
 ### Sync timer
 - [x] uses interrupt to synchronize RTC value to the display
 - [x] only synchronize data every second
-- [ ] use RTC alarm interrupt instead of timer interrupt
+- [x] use RTC alarm interrupt instead of timer interrupt
 
 ### I²C display
 - [x] initializes display
@@ -35,6 +35,6 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 
 #### Reduce HAL_I2C_Transmit overhead
 HAL_I2C_Transmit is expensive because of decreased I²C speed of the display!
-- [ ] send all characters to the display in one HAL_I2C_Transmit call
+- [x] send all characters to the display in one HAL_I2C_Transmit call
 - [ ] only transfer changed chars
 - [ ] use DMA Controller to transfer the data
