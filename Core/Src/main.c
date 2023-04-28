@@ -460,7 +460,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         break;
 
       case 1:
-        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '3' && str_date[i] > '1')) // >31
+        if ((str_date[i] < '1' || str_date[i] > '9') || (str_date[i - 1] == '3' && str_date[i] > '1')) // >31
         {
           error = 1;
         }
@@ -475,7 +475,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         break;
 
       case 4:
-        if ((str_date[i] < '0' || str_date[i] > '9') || (str_date[i - 1] == '1' && str_date[i] > '2')) // >12
+        if ((str_date[i] < '1' || str_date[i] > '9') || (str_date[i - 1] == '1' && str_date[i] > '2')) // >12
         {
           error = 1;
         }
@@ -556,7 +556,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
         HAL_RTC_SetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
         HAL_RTC_SetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
-        HAL_Delay(200);
       }
       else
       { // Error resetten
@@ -575,7 +574,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  */
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
 {
-
   // Get RTC values
   HAL_RTC_GetTime(&hrtc, &time_rtc, RTC_FORMAT_BIN);
   HAL_RTC_GetDate(&hrtc, &date_rtc, RTC_FORMAT_BIN);
@@ -587,9 +585,9 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
   sprintf(datetime_string, "%02u:%02u - %02u:%02u:%02u", date_rtc.Date, date_rtc.Month, time_rtc.Hours, time_rtc.Minutes, time_rtc.Seconds);
 
   // convert data from datetime_LCD to display_time for LCD 4bit mode
-  for (uint16_t i = 0, k = 0; i < 16; i++, k += 4)
+  for (uint16_t j = 0; j < 16; j++)
   {
-    write_char_4bit_mode(display_output, k, datetime_string[i]);
+    write_char_4bit_mode(display_output, (j << 2), datetime_string[j]);
   }
 
   // send 4 times the data of datetime_LCD because of LCD 4bit mode -> 64 + 4 bit cursor reset cmd
@@ -609,15 +607,6 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
   rtcInterruptAlarm.AlarmDateWeekDay = 0;
   rtcInterruptAlarm.Alarm = RTC_ALARM_A;
   HAL_RTC_SetAlarm_IT(&hrtc, &rtcInterruptAlarm, RTC_FORMAT_BIN);
-}
-
-/*
- * Triggers when an I²C communication finished successfully
- * using interrupts. Turns off the red status indicator led.
- */
-void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
-{
-  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, RESET);
 }
 
 /*
@@ -651,23 +640,10 @@ void write_cmd_4bit_mode(uint8_t destination[], uint16_t index, char data)
   char data_u, data_l;
   data_u = (data & 0xF0);
   data_l = ((data << 4) & 0xF0);
-  destination[index] = data_u | 0x0C;     // en=1, rs=0
-  destination[index + 1] = data_u | 0x08; // en=0, rs=0
-  destination[index + 2] = data_l | 0x0C; // en=1, rs=0
-  destination[index + 3] = data_l | 0x08; // en=0, rs=0
-}
-
-void lcd_send_cmd(char cmd)
-{
-  char data_u, data_l;
-  uint8_t data_t[4];
-  data_u = (cmd & 0xf0);
-  data_l = ((cmd << 4) & 0xf0);
-  data_t[0] = data_u | 0x0C; // en=1, rs=0
-  data_t[1] = data_u | 0x08; // en=0, rs=0
-  data_t[2] = data_l | 0x0C; // en=1, rs=0
-  data_t[3] = data_l | 0x08; // en=0, rs=0
-  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)data_t, 4, 100);
+  destination[index] = data_u | 0x0C;   // en=1, rs=0
+  destination[++index] = data_u | 0x08; // en=0, rs=0
+  destination[++index] = data_l | 0x0C; // en=1, rs=0
+  destination[++index] = data_l | 0x08; // en=0, rs=0
 }
 
 void lcd_init(void)
@@ -695,6 +671,19 @@ void lcd_init(void)
   lcd_send_cmd(0x06); // Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
   HAL_Delay(1);
   lcd_send_cmd(0x0C); // Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
+}
+
+void lcd_send_cmd(char cmd)
+{
+  char data_u, data_l;
+  uint8_t data_t[4];
+  data_u = (cmd & 0xf0);
+  data_l = ((cmd << 4) & 0xf0);
+  data_t[0] = data_u | 0x0C; // en=1, rs=0
+  data_t[1] = data_u | 0x08; // en=0, rs=0
+  data_t[2] = data_l | 0x0C; // en=1, rs=0
+  data_t[3] = data_l | 0x08; // en=0, rs=0
+  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)data_t, 4, 100);
 }
 
 uint8_t calculate_number(char zehner, char einer)
