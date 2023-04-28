@@ -19,7 +19,7 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 - [x] uses interrupts to receive input
 - [ ] ~does not require to type the symbols `:` and `-`~
 - [x] considers leap years
-- [ ] document and beautify RTC code
+- [x] document and beautify RTC code
 
 ### Sync timer
 - [x] uses interrupt to synchronize RTC value to the display
@@ -31,7 +31,7 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 - [x] use the I²C-2 and set to 100kHz clock frequency (max rating of display)
 - [x] connect `PB -> SDA`, `PB9 -> SCL`, GND and a supply voltage of 5V
 - [x] I²C communication error lights up the red onboard led
-- [ ] check and document initialisation and transfer code
+- [x] check and document initialisation and transfer code
 
 #### Reduce HAL_I2C_Transmit overhead
 HAL_I2C_Transmit is expensive because of decreased I²C speed of the display!
