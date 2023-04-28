@@ -65,6 +65,7 @@ void lcd_send_cmd(char cmd);
 void lcd_init(void);
 uint8_t calculate_number(char zehner, char einer);
 void write_char_4bit_mode(uint8_t destination[], uint16_t index, char data);
+void write_cmd_4bit_mode(uint8_t destination[], uint16_t index, char data);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -78,8 +79,8 @@ char data = '\0';
 char str_date[16] = {'\0'};
 char datetime_string[22] = {'\0'};
 
-// 5 times 2 digits, 6 spacing characters times 4
-uint8_t display_output[64];
+// 5 times 2 digits, 6 spacing characters times 4 and reset command
+uint8_t display_output[68];
 HAL_StatusTypeDef lcd_write_result = 0;
 
 uint8_t i = 0;
@@ -107,6 +108,9 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
+  // sets the cursor to the home position
+  write_cmd_4bit_mode(display_output, 64, 0x02);
 
   /* USER CODE END Init */
 
@@ -565,6 +569,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   HAL_UART_Receive_IT(&huart3, (uint8_t *)&data, 1);
 }
 
+/*
+ * Interrupt handler of the real time clock alarm.
+ * Is set to fire every second to update the display.
+ */
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
 {
 
@@ -584,16 +592,10 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
     write_char_4bit_mode(display_output, k, datetime_string[i]);
   }
 
-  // send 4 times the data of datetime_LCD because of LCD 4bit mode -> 64
-  lcd_write_result = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)display_output, 64, 1000);
+  // send 4 times the data of datetime_LCD because of LCD 4bit mode -> 64 + 4 bit cursor reset cmd
+  HAL_I2C_Master_Transmit_IT(&hi2c1, SLAVE_ADDRESS_LCD, (uint8_t *)display_output, 68);
 
-  // activates the red led on transmission failure
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, lcd_write_result != HAL_OK);
-
-  // set cursor to home
-  lcd_send_cmd(0x02);
-
-  // resets the alarm to trigger the interrupt in the next second
+  // resets the alarm to trigger the interrupt in the next second again
   RTC_AlarmTypeDef rtcInterruptAlarm = {0};
   rtcInterruptAlarm.AlarmTime.Hours = 0;
   rtcInterruptAlarm.AlarmTime.Minutes = 0;
@@ -610,17 +612,49 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *_hrtc)
 }
 
 /*
-Converts one (ascii) byte to I²C display instructions
-*/
+ * Triggers when an I²C communication finished successfully
+ * using interrupts. Turns off the red status indicator led.
+ */
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, RESET);
+}
+
+/*
+ * Triggers when an I²C communication failed.
+ * Turns on the red status indicator led.
+ */
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
+{
+  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, SET);
+}
+
+/*
+ * Converts one (ascii) byte to I²C display instructions
+ */
 void write_char_4bit_mode(uint8_t destination[], uint16_t index, char data)
 {
   char data_u, data_l;
-  data_u = (data & 0xf0);
-  data_l = ((data << 4) & 0xf0);
+  data_u = (data & 0xF0);
+  data_l = ((data << 4) & 0xF0);
   destination[index] = data_u | 0x0D;     // en=1, rs=1
   destination[index + 1] = data_u | 0x09; // en=0, rs=1
   destination[index + 2] = data_l | 0x0D; // en=1, rs=1
   destination[index + 3] = data_l | 0x09; // en=0, rs=1
+}
+
+/*
+Converts one byte command to I²C display instructions
+*/
+void write_cmd_4bit_mode(uint8_t destination[], uint16_t index, char data)
+{
+  char data_u, data_l;
+  data_u = (data & 0xF0);
+  data_l = ((data << 4) & 0xF0);
+  destination[index] = data_u | 0x0C;     // en=1, rs=0
+  destination[index + 1] = data_u | 0x08; // en=0, rs=0
+  destination[index + 2] = data_l | 0x0C; // en=1, rs=0
+  destination[index + 3] = data_l | 0x08; // en=0, rs=0
 }
 
 void lcd_send_cmd(char cmd)
@@ -670,6 +704,7 @@ uint8_t calculate_number(char zehner, char einer)
 
   return (zehn * 10) + ein;
 }
+
 /* USER CODE END 4 */
 
 /**
