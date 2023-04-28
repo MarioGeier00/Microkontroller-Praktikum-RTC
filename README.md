@@ -5,6 +5,7 @@ Using the realtime clock of the STM32 to display the date and time value and an 
 - Use the Real-Time-Clock RTC of the STM32  
 - Display the time every second in the format `TT:MM - HH:MM:SS`  
 - Using the UART, the time can be modified  
+[Notion Project Documentation](https://same-weight-ac9.notion.site/Dokumentation-STM32-Displayausgabe-der-RTC-Clock-0d669402daf044bdb97b6dbe7e79d488)
 
 ## Used components
 - NUCLEO-F413ZH
