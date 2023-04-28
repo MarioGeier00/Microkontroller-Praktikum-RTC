@@ -62,16 +62,16 @@ namespace SerialTimeControl
             if (!serialPort.IsOpen)
                 serialPort.Open();
 
-            byte[] buffer = Encoding.Default.GetBytes(textBox.Text);
-
-            for (int i = 0; i < buffer.Length; i++)
+            await Task.Run(async () =>
             {
-                await Task.Run(() =>
+                byte[] buffer = Encoding.Default.GetBytes(textBox.Text);
+
+                for (int i = 0; i < buffer.Length; i++)
                 {
                     serialPort.Write(buffer, i, 1);
-                    Thread.Sleep(1);
-                });
-            }
+                    await Task.Delay(1);
+                }
+            });
 
             transferTask = null;
         }
